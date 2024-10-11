@@ -1,0 +1,25 @@
+{
+    "name": "smash-messaging-endpoint",
+    "version": "0.0.1",
+    "description": "",
+    "main": "src/server.js",
+    "type": "module",
+    "scripts": {
+        "start": "nodemon src/server.js"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "MIT",
+    "devDependencies": {
+        "nodemon": "^3.1.0"
+    },
+    "dependencies": {
+        "@peculiar/webcrypto": "^1.4.6",
+        "@socket.io/cluster-adapter": "^0.2.2",
+        "2key-ratchet": "^1.0.18",
+        "express": "^4.19.2",
+        "socket.io": "^4.7.5",
+        "sqlite": "^5.1.1",
+        "sqlite3": "^5.1.7"
+    }
+}
