@@ -1,22 +1,10 @@
-// For format details, see https://aka.ms/devcontainer.json. For config options, see the
-// README at: https://github.com/devcontainers/templates/tree/main/src/javascript-node
 {
 	"name": "Node.js",
-	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bullseye"
-
-	// Features to add to the dev container. More info: https://containers.dev/features.
-	// "features": {},
-
-	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
-
-	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "yarn install",
-
-	// Configure tool-specific properties.
-	// "customizations": {},
-
-	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-	// "remoteUser": "root"
+	"image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bullseye",
+	"mounts": [
+        "source=/Users/valentin/Code/Smash/smash-node-lib,target=/workspaces/smash-node-lib,type=bind",
+        "source=${localWorkspaceFolderBasename}-node_modules,target=${containerWorkspaceFolder}/node_modules,type=volume",
+        "source=${localWorkspaceFolderBasename}-dist,target=${containerWorkspaceFolder}/dist,type=volume"
+    ],
+    "postCreateCommand": "echo 'source <(npm completion)' >> /home/node/.bashrc && sudo chown -R node node_modules && npm i"
 }
