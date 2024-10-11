@@ -55,11 +55,11 @@ async function start() {
     console.log(`Successfully ${verb} ${keyId} mailbox`);
     // TODO: handle offline situation (ie queue messages)
     // TODO: handle 404 (eg. w/a regex event listener)
-    // io.removeAllListeners(keyId);
-    // io.on(keyId, (data) => {
-    //   console.log(`> Incoming data for ${keyId} (length: ${data.length})`);
-    //   recipientSocket.emit('data', data);
-    // });
+    io.removeAllListeners(keyId);
+    io.on(keyId, (data) => {
+      console.log(`> Incoming data for ${keyId} (length: ${data.length})`);
+      recipientSocket.emit('data', data);
+    });
   }
 
   // connect
@@ -104,14 +104,14 @@ async function start() {
   console.log("\n\n");
 
   // challenge the new user on connection attempt
-  // io.use(async (socket, next) => {
-  //   try {
-  //     next();
-  //   } catch {
-  //     console.log('attempting to connect without PK');
-  //     next(new Error("No valid Public Key could be retrieved / Challenge couldn't be sent."));
-  //   }
-  // });
+  io.use(async (socket, next) => {
+    try {
+      next();
+    } catch {
+      console.log('attempting to connect without PK');
+      next(new Error("No valid Public Key could be retrieved / Challenge couldn't be sent."));
+    }
+  });
 
   const DEBUG_DELAY_USERS = {};
   io.on('connection', async (socket) => {
@@ -121,7 +121,7 @@ async function start() {
     const clientKeyId = auth ? await exportKey(clientPublicKey) : "ANONYMOUS";
 
     // TODO: THIS ISNT GREAT AT ALL — RETHINK!
-    socket.on('message', (peerId, sessionId, data) => {
+    socket.on('data', (peerId, sessionId, data) => {
       if (!Object.hasOwn(REGISTERED_USERS, peerId)) console.error(`unknown peer id ${peerId}`); // TODO 404 to user
       console.log(`> Incoming data for ${peerId} (length: ${data.length}, session: ${sessionId})`);
       // TODO return an error to client (e.g. 404)
@@ -129,7 +129,7 @@ async function start() {
         DEBUG_DELAY_USERS[sessionId] = 1000;
       }
       setTimeout(() => {
-        REGISTERED_USERS[peerId] && REGISTERED_USERS[peerId].emit('message', sessionId, data);
+        REGISTERED_USERS[peerId] && REGISTERED_USERS[peerId].emit('data', sessionId, data);
       }, Math.max(0, DEBUG_DELAY_USERS[sessionId]));
       DEBUG_DELAY_USERS[sessionId] -= 100;
     });
