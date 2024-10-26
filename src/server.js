@@ -113,25 +113,22 @@ async function start() {
     }
   });
 
-  const DEBUG_DELAY_USERS = {};
   io.on('connection', async (socket) => {
     const auth = !!socket.handshake.auth.key;
     const clientPublicKey = auth ? await importClientPublicKey(socket) : undefined;
     // Generate a Base64 encoding of the Client public key
     const clientKeyId = auth ? await exportKey(clientPublicKey) : "ANONYMOUS";
 
-    // TODO: THIS ISNT GREAT AT ALL — RETHINK!
     socket.on('data', (peerId, sessionId, data) => {
-      if (!Object.hasOwn(REGISTERED_USERS, peerId)) console.error(`unknown peer id ${peerId}`); // TODO 404 to user
-      console.log(`> Incoming data for ${peerId} (length: ${data.length}, session: ${sessionId})`);
-      // TODO return an error to client (e.g. 404)
-      if (!DEBUG_DELAY_USERS[sessionId]) {
-        DEBUG_DELAY_USERS[sessionId] = 1000;
+      // for (const key in REGISTERED_USERS)
+      //   if (key !== clientKeyId)
+      //     REGISTERED_USERS[key].emit('data', sessionId, data);
+      if (!Object.hasOwn(REGISTERED_USERS, peerId)) {
+        console.error(`unknown peer id ${peerId}`); // TODO 404 to user
+      } else {
+        console.log(`> Incoming data for ${peerId} (length: ${data.length}, session: ${sessionId})`);
+        REGISTERED_USERS[peerId].emit('data', sessionId, data);
       }
-      setTimeout(() => {
-        REGISTERED_USERS[peerId] && REGISTERED_USERS[peerId].emit('data', sessionId, data);
-      }, Math.max(0, DEBUG_DELAY_USERS[sessionId]));
-      DEBUG_DELAY_USERS[sessionId] -= 100;
     });
 
     if (!socket.recovered && auth) {
