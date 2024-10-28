@@ -2,9 +2,10 @@
 	"name": "Node.js",
 	"image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bullseye",
 	"mounts": [
-        "source=/Users/valentin/Code/Smash/smash-node-lib,target=/workspaces/smash-node-lib,type=bind",
+        "source=${localEnv:HOME}${localEnv:USERPROFILE}/.radicle,target=/home/node/.radicle,type=bind",
+        "source=${localWorkspaceFolderBasename}-radicle,target=/home/node/.radicle/bin,type=volume",
         "source=${localWorkspaceFolderBasename}-node_modules,target=${containerWorkspaceFolder}/node_modules,type=volume",
         "source=${localWorkspaceFolderBasename}-dist,target=${containerWorkspaceFolder}/dist,type=volume"
     ],
-    "postCreateCommand": "echo 'source <(npm completion)' >> /home/node/.bashrc && sudo chown -R node node_modules && npm i"
+    "postCreateCommand": "echo 'source <(npm completion)' >> /home/node/.bashrc && sudo chown -R node node_modules dist /home/node/.radicle/bin && npm i && curl -sSf https://radicle.xyz/install | sh && echo 'export PATH=$PATH:/home/node/.radicle/bin' >> /home/node/.bashrc"
 }
