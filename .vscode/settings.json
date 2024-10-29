@@ -1,0 +1,26 @@
+{
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.formatOnPaste": true,
+    "editor.formatOnSave": true,
+    "files.insertFinalNewline": true,
+    "javascript.format.insertSpaceAfterOpeningAndBeforeClosingEmptyBraces": false,
+    "typescript.format.insertSpaceAfterOpeningAndBeforeClosingEmptyBraces": false,
+    "git.autofetch": "all",
+    "git.branchProtection": [
+        "v0.0.0-alpha"
+    ],
+    "git.countBadge": "tracked",
+    "git.detectSubmodules": true,
+    "git.rebaseWhenSync": true,
+    "git.requireGitUserConfig": true,
+    "git.repositoryScanMaxDepth": 2,
+    "git.terminalGitEditor": true,
+    "git.alwaysSignOff": true,
+    "git.enableCommitSigning": true,
+    "git.fetchOnPull": true,
+    "git.mergeEditor": true,
+    "git.openRepositoryInParentFolders": "always",
+    "git.showPushSuccessNotification": true,
+    "git.supportCancellation": true,
+}
