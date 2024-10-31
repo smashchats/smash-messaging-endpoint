@@ -12,12 +12,12 @@ import { subtle } from 'node:crypto';
 // - [x] register anonymous users with any public key
 // - [x] authenticate registers with private key challenge
 // - [x] accept messages from any peer towards registered public key
-// - [ ] reject messages peer not found
+// - [-] reject messages peer not found
 // - [x] relay messages to the public key recipient (connected)
+// - [x] async (offline)
 // - [ ] 
 // NON GOALS
 // - scaling (horizontal scale coordinating multiple nodes)
-// - async (offline)
 // - authentication (ACL/usage)
 // - one-time keys
 // - multi-thread optimisation (like that or one thread per client(?)-TODO read about it)—vertical scale
@@ -41,6 +41,7 @@ const importKey = async (keyEncoded, keyAlgorithm, exportable = true, usages = [
   )
 );
 const importClientPublicKey = async (socket) => (await importKey(socket.handshake.auth.key, socket.handshake.auth.keyAlgorithm));
+export const last4 = (str) => str.substring(str.length - 6, str.length - 2);
 
 async function start() {
   const app = express();
@@ -48,18 +49,35 @@ async function start() {
   const io = new Server(server);
   const port = process.env.PORT || 3210;
 
-  const REGISTERED_USERS = {};
+  // TODO: reimplement in TypeScript
+
+  const REGISTERED_USERS = {}; // {socket?, queue: []}
+
+  const sendDataTo = (keyId, sessionId, data) => {
+    REGISTERED_USERS[keyId]?.queue.push([sessionId, data]);
+    flushDataQueue(keyId);
+  };
+
+  const flushDataQueue = (keyId) => {
+    const recipient = REGISTERED_USERS[keyId];
+    if (recipient.socket) while (recipient.queue.length) {
+      // TODO only remove from queue if successful!!
+      const [sessionId, data] = recipient.queue.shift();
+      recipient.socket.emit('data', sessionId, data);
+      console.log(`> Sent data for ${last4(keyId)} (length: ${data.length}, session: ${sessionId})`);
+    }
+  }
+
   const registerMailBox = (keyId, recipientSocket) => {
-    const verb = !Object.hasOwn(REGISTERED_USERS, keyId) ? "registered" : "updated";
-    REGISTERED_USERS[keyId] = recipientSocket;
-    console.log(`Successfully ${verb} ${keyId} mailbox`);
-    // TODO: handle offline situation (ie queue messages)
-    // TODO: handle 404 (eg. w/a regex event listener)
-    io.removeAllListeners(keyId);
-    io.on(keyId, (data) => {
-      console.log(`> Incoming data for ${keyId} (length: ${data.length})`);
-      recipientSocket.emit('data', data);
-    });
+    const alreadyRegistered = !!Object.hasOwn(REGISTERED_USERS, keyId);
+    if (alreadyRegistered) {
+      REGISTERED_USERS[keyId].socket = recipientSocket;
+      flushDataQueue(keyId);
+    }
+    else {
+      REGISTERED_USERS[keyId] = { socket: recipientSocket, queue: [] };
+    }
+    console.log(`>>> Successfully ${alreadyRegistered ? "updated" : "registered"} ${last4(keyId)} mailbox/socket`);
   }
 
   // connect
@@ -120,20 +138,18 @@ async function start() {
     const clientKeyId = auth ? await exportKey(clientPublicKey) : "ANONYMOUS";
 
     socket.on('data', (peerId, sessionId, data) => {
-      // for (const key in REGISTERED_USERS)
-      //   if (key !== clientKeyId)
-      //     REGISTERED_USERS[key].emit('data', sessionId, data);
       if (!Object.hasOwn(REGISTERED_USERS, peerId)) {
-        console.error(`unknown peer id ${peerId}`); // TODO 404 to user
+        console.error(`unknown peer id ${last4(peerId)}`);
+        // TODO 404 to user
       } else {
-        console.log(`> Incoming data for ${peerId} (length: ${data.length}, session: ${sessionId})`);
-        REGISTERED_USERS[peerId].emit('data', sessionId, data);
+        console.log(`>>> Incoming data for ${last4(peerId)} (length: ${data.length}, session: ${sessionId})`);
+        sendDataTo(peerId, sessionId, data);
       }
     });
 
     if (!socket.recovered && auth) {
       // unique stuff should be done here
-      console.log('connected', clientKeyId);
+      console.log('> connected', last4(clientKeyId));
       // A new shared AES-GCM encryption / decryption key is generated for challenge encryption
       // The server's private key is used as the "key", the client's public key is used as "public".
       // This is computed separately by both parties and the result is always the same.
@@ -165,21 +181,25 @@ async function start() {
           registerMailBox(clientKeyId, socket);
         } else {
           // TODO: better cleaner scalable logs
-          console.warn('FAILED CHALLENGE');
+          console.warn('!!! FAILED CHALLENGE !!!');
           socket.disconnect(true);
         }
-        console.log('ALL MAILBOXES:', JSON.stringify(Object.keys(REGISTERED_USERS), null, 2));
+        console.log('\nALL MAILBOXES:', JSON.stringify(Object.keys(REGISTERED_USERS).map(k => `${last4(k)}: ${k}`), null, 2), '\n');
       });
 
       socket.emit('challenge', {
         iv: ivBuf.toString(SME_CONFIG.challengeEncoding),
         challenge: encryptedChallengeBuf.toString(SME_CONFIG.challengeEncoding),
       })
+      console.log('> challenged', last4(clientKeyId));
     } else {
-      console.log('re-connected', clientKeyId);
+      console.log('>>> re-connected', last4(clientKeyId));
     }
 
-    socket.on('disconnect', () => console.log('disconnected', clientKeyId));
+    socket.on('disconnect', () => {
+      console.log('>>> disconnected', last4(clientKeyId));
+      if (REGISTERED_USERS[clientKeyId]) REGISTERED_USERS[clientKeyId].socket = undefined;
+    });
   });
 
   // app.post("/m/:keyEncoded", async (req, res) => {
