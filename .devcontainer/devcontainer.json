@@ -1,7 +1,7 @@
 {
-	"name": "Node.js",
-	"image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bullseye",
-	"mounts": [
+    "name": "SMEv1",
+    "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
+    "mounts": [
         "source=${localEnv:HOME}${localEnv:USERPROFILE}/.radicle,target=/home/node/.radicle,type=bind",
         "source=${localWorkspaceFolderBasename}-radicle,target=/home/node/.radicle/bin,type=volume",
         "source=${localWorkspaceFolderBasename}-node_modules,target=${containerWorkspaceFolder}/node_modules,type=volume",
