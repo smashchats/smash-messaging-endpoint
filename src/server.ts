@@ -1,6 +1,6 @@
 // Note: used https://github.com/socketio/chat-example/ (MIT, 2024) as a starting point.
 
-// Smash Messaging Endpoint (websockets) 0.0.1 
+// Smash Messaging Endpoint (websockets) 0.0.1
 
 // GOALS
 // - [x] register anonymous users with any public key
@@ -9,7 +9,7 @@
 // - [-] reject messages peer not found
 // - [x] relay messages to the public key recipient (connected)
 // - [x] async (offline)
-// - [ ] 
+// - [ ]
 // NON GOALS
 // - scaling (horizontal scale coordinating multiple nodes)
 // - authentication (ACL/usage)
@@ -18,7 +18,7 @@
 // - non-websocket support
 // - webRTC upgrade
 // - http endpoint (vs websocket , pour lazy post for non-paired users)
-// - 
+// -
 
 
 import express from 'express';
@@ -41,6 +41,8 @@ async function start() {
   const server = createServer(app);
   const io = new Server(server);
   const port = process.env.PORT || 3210;
+  const host = process.env.HOST || "host.docker.internal";
+  const url = `ws://${host}:${port}/`;
 
   const REGISTERED_USERS: RegisteredUsers = {};
 
@@ -83,7 +85,7 @@ async function start() {
 
   console.log("\n**** SME CONFIG ***");
   const SME_CONFIG = {
-    url: `ws://host.docker.internal:${port}/`,
+    url,
     smePublicKey: await exportKey(SME_KEY_PAIR.publicKey),
     keyAlgorithm: SME_KEY_PAIR.publicKey.algorithm,
     encryptionAlgorithm: {
@@ -91,7 +93,7 @@ async function start() {
       length: 256,
     },
     challengeEncoding: "base64" as BufferEncoding,
-  }
+  };
   console.log(JSON.stringify(SME_CONFIG));
   console.log("\n\n");
 
