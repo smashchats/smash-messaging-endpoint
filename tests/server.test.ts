@@ -17,8 +17,9 @@ interface ChallengeData {
 }
 
 class AuthenticatedClient {
-    private socket?: Socket;
-    private keyPair?: CryptoKeyPair;
+    socket?: Socket;
+    keyPair?: CryptoKeyPair;
+    exportedPublicKey?: string;
 
     async connect(url: string, smePublicKey: string) {
         this.keyPair = await subtle.generateKey(
@@ -26,10 +27,10 @@ class AuthenticatedClient {
             true,
             KEY_USAGES,
         );
-        const exportedPublicKey = await exportKey(this.keyPair.publicKey);
+        this.exportedPublicKey = await exportKey(this.keyPair.publicKey);
         this.socket = Client(url, {
             auth: {
-                key: exportedPublicKey,
+                key: this.exportedPublicKey,
                 keyAlgorithm: KEY_ALGORITHM,
             },
         });
@@ -38,10 +39,7 @@ class AuthenticatedClient {
         });
     }
 
-    private async solveChallenge(
-        smePublicKeyString: string,
-        data: ChallengeData,
-    ) {
+    async solveChallenge(smePublicKeyString: string, data: ChallengeData) {
         try {
             // Convert base64 strings to buffers
             const ivBuffer = Buffer.from(data.iv, 'base64');
@@ -155,5 +153,80 @@ describe('SME Server', () => {
         await sleep(500);
         const socket = client.getSocket();
         expect(socket.connected).toBeTruthy();
+    });
+
+    it('should fail authentication with incorrect challenge solution', async () => {
+        client = new AuthenticatedClient();
+
+        // Override solveChallenge to return incorrect solution
+        jest.spyOn(
+            client as AuthenticatedClient,
+            'solveChallenge',
+        ).mockImplementation(async function (this: AuthenticatedClient) {
+            this.socket!.emit('register', 'incorrect_solution');
+        });
+
+        await client.connect(URL, smePublicKey);
+        await sleep(500);
+
+        const socket = client.getSocket();
+        expect(socket.connected).toBeFalsy();
+    });
+
+    describe('message passing between clients', () => {
+        let sender: AuthenticatedClient;
+        let receiver: AuthenticatedClient;
+
+        beforeEach(async () => {
+            // Set up two authenticated clients
+            sender = new AuthenticatedClient();
+            receiver = new AuthenticatedClient();
+
+            await sender.connect(URL, smePublicKey);
+            await receiver.connect(URL, smePublicKey);
+            await sleep(500); // Wait for authentication to complete
+        });
+
+        afterEach(() => {
+            sender.disconnect();
+            receiver.disconnect();
+        });
+
+        it('should successfully pass messages between authenticated clients', (done) => {
+            const testMessage = { length: 42 };
+            const testSessionId = 'test-session';
+
+            // Set up receiver to listen for data
+            receiver.getSocket().on('data', (sessionId, data) => {
+                expect(sessionId).toBe(testSessionId);
+                expect(data).toEqual(testMessage);
+                done();
+            });
+
+            // Get receiver's public key
+            const receiverPublicKey = receiver.exportedPublicKey;
+
+            // Send message from sender to receiver
+            sender
+                .getSocket()
+                .emit('data', receiverPublicKey, testSessionId, testMessage);
+        });
+
+        it('should handle messages to non-existent peers', (done) => {
+            const testMessage = { length: 42 };
+            const testSessionId = 'test-session';
+            const nonExistentPeerId = 'non-existent-peer-id';
+
+            sender.getSocket().on('error', (error) => {
+                expect(error.code).toBe(404);
+                expect(error.message).toContain('Peer');
+                expect(error.message).toContain('not found');
+                done();
+            });
+
+            sender
+                .getSocket()
+                .emit('data', nonExistentPeerId, testSessionId, testMessage);
+        });
     });
 });
