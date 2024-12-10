@@ -25,5 +25,7 @@ export const importKey = async (
         usages,
     );
 
-export const last4 = (str: string): string =>
-    str.substring(str.length - 6, str.length - 2);
+export const last4 = (str: string): string => {
+    const trimmed = str.replaceAll('=', '');
+    return trimmed.substring(trimmed.length - 4, trimmed.length);
+};
