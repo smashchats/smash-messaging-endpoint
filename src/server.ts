@@ -22,12 +22,12 @@
 
 
 import express from 'express';
+import { Buffer } from 'node:buffer';
+import { webcrypto as crypto, subtle } from 'node:crypto';
 import { createServer } from 'node:http';
 import { Server, Socket } from 'socket.io';
-import { subtle, webcrypto as crypto } from 'node:crypto';
-import { Buffer } from 'node:buffer';
 import { exportKey, importKey, last4 } from './crypto.js';
-import type { RegisteredUsers, SMEConfig, KeyPair, ChallengeResponse } from './types.js';
+import type { KeyPair, RegisteredUsers } from './types.js';
 
 const KEY_ALGORITHM: EcKeyAlgorithm = { name: "ECDH", namedCurve: "P-256" };
 const KEY_USAGE: KeyUsage[] = ['deriveBits', 'deriveKey'];
@@ -36,7 +36,11 @@ async function importClientPublicKey(socket: Socket): Promise<CryptoKey> {
   return await importKey(socket.handshake.auth.key, KEY_ALGORITHM);
 }
 
-async function start() {
+interface Closable {
+  close(fn?: (err?: Error) => void): unknown;
+}
+
+export async function start(): Promise<Closable> {
   const app = express();
   const server = createServer(app);
   const io = new Server(server);
@@ -198,6 +202,6 @@ async function start() {
   server.listen(port, () => {
     console.log(`server running at http://localhost:${port}`);
   });
-}
 
-start().catch(console.error);
+  return server;
+}
