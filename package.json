@@ -11,6 +11,7 @@
         "prepare": "husky",
         "test": "jest",
         "test:watch": "npm run test -- --watchAll",
+        "test:coverage": "npm run test -- --coverage",
         "typecheck": "tsc --noEmit",
         "eslint:check": "eslint src/**/*.ts",
         "eslint-dist:check": "eslint dist/**/*.js",
