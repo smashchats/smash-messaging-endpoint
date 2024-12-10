@@ -44,6 +44,11 @@ async function start() {
   const host = process.env.HOST || "host.docker.internal";
   const url = `ws://${host}:${port}/`;
 
+  // Add health check endpoint
+  app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'healthy' });
+  });
+
   const REGISTERED_USERS: RegisteredUsers = {};
 
   const sendDataTo = (keyId: string, sessionId: string, data: any): void => {

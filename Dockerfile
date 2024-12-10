@@ -35,6 +35,9 @@ COPY --from=builder --chown=appuser:appgroup /app/dist ./dist
 
 USER appuser
 
+HEALTHCHECK --interval=30s --timeout=3s \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:$PORT/health || exit 1
+
 EXPOSE $PORT
 
 CMD ["npm", "start"]
