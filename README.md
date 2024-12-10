@@ -101,6 +101,8 @@ SMEv1 implements a WebSocket-based messaging relay with the following key compon
 
 Please read our [Contributing Guide](./docs/CONTRIBUTING.md) before submitting pull requests. All contributions are subject to our [Code of Conduct](./docs/CODE_OF_CONDUCT.md).
 
+[Issues](https://app.radicle.xyz/nodes/seed.radicle.garden/rad:z25KkhWqmihzgVX5oJEh39s7qjSWB/issues).
+
 ### Development Environment
 
 We recommend using Visual Studio Code with our provided settings and extensions. The repository includes a devcontainer configuration for consistent development environments.
