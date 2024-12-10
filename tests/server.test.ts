@@ -141,6 +141,14 @@ describe('SME Server', () => {
         expect(data.status).toBe('healthy');
     });
 
+    it('should handle anonymous connections', (done) => {
+        const clientSocket = Client(URL);
+        clientSocket.on('connect', () => {
+            expect(clientSocket.connected).toBeTruthy();
+            done();
+        });
+    });
+
     it('should handle authenticated connection and challenge', async () => {
         client = new AuthenticatedClient();
         await client.connect(URL, smePublicKey);
