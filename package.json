@@ -18,7 +18,9 @@
         "prettier": "prettier --config .prettierrc 'src/**/*.ts'",
         "prettier:format": "npm run prettier -- --write",
         "prettier:check": "npm run prettier -- --check",
-        "build:checks": "npm run typecheck && npm run build",
+        "circular-dependencies:check": "madge --circular dist/",
+        "code:checks": "npm run eslint:check && npm run typecheck && npm run prettier:check",
+        "build:checks": "npm run code:checks && npm run build && npm run eslint-dist:check && npm run circular-dependencies:check",
         "build:start": "npm run build:checks && npm run start",
         "lint-staged": "lint-staged"
     },
@@ -37,6 +39,7 @@
         "husky": "^9.1.7",
         "jest": "^29.7.0",
         "lint-staged": "^15.2.10",
+        "madge": "^8.0.0",
         "nodemon": "^3.1.0",
         "prettier": "^3.4.2",
         "socket.io-client": "^4.8.1",
