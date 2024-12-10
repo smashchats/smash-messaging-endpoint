@@ -1,11 +1,56 @@
-import { start } from './server.js';
+import { importKey } from './crypto.js';
+import { KEY_ALGORITHM, KEY_USAGES, start } from './server.js';
 
-// Initialize SME key pair
-const exportedSmePrivateKey = JSON.parse(
-    '{"key_ops":["deriveKey","deriveBits"],"ext":true,"kty":"EC","x":"Xg8dSsr93TMctKPiG3yRZ72KTJihrzSTzE_vLk7m1to","y":"cJg1q3Mk08b_gw7pawTB9oZ2svkZE_6I0C26ZDJC0Qk","crv":"P-256","d":"ObBoSrita5E2pJXQOTC35amrY-8bTRq1SdbDFmawkDU"}',
-);
-const exportedSmePublicKey = JSON.parse(
-    '{"key_ops":[],"ext":true,"kty":"EC","x":"Xg8dSsr93TMctKPiG3yRZ72KTJihrzSTzE_vLk7m1to","y":"cJg1q3Mk08b_gw7pawTB9oZ2svkZE_6I0C26ZDJC0Qk","crv":"P-256"}',
-);
+let server: { close: () => void };
 
-start(exportedSmePublicKey, exportedSmePrivateKey).catch(console.error);
+async function startServer() {
+    const publicKeyString = process.env.SME_PUBLIC_KEY;
+    const privateKeyString = process.env.SME_PRIVATE_KEY;
+    if (!publicKeyString || !privateKeyString) {
+        throw new Error('SME_PUBLIC_KEY and SME_PRIVATE_KEY must be set');
+    }
+    const [publicKey, privateKey] = await Promise.all([
+        importKey(
+            publicKeyString,
+            KEY_ALGORITHM as EcKeyAlgorithm,
+            true,
+            [],
+            'base64',
+            'spki',
+        ),
+        importKey(
+            privateKeyString,
+            KEY_ALGORITHM as EcKeyAlgorithm,
+            true,
+            KEY_USAGES,
+            'base64',
+            'pkcs8',
+        ),
+    ]);
+    server = await start(publicKey, privateKey);
+}
+
+async function shutdown(signal: string) {
+    console.log(`\nReceived ${signal}. Starting graceful shutdown...`);
+
+    if (server) {
+        try {
+            await server.close();
+            console.log('Server closed successfully');
+        } catch (err) {
+            console.error('Error while closing server:', err);
+        }
+    }
+
+    process.exit(0);
+}
+
+// Handle shutdown signals
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+
+// Start the server and handle any errors
+startServer().catch((err) => {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+});

@@ -2,14 +2,9 @@ import { subtle } from 'crypto';
 import { io as Client, Socket } from 'socket.io-client';
 
 import { exportKey, importKey } from '../src/crypto';
-import { start } from '../src/server';
+import { KEY_ALGORITHM, KEY_USAGES, start } from '../src/server';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const KEY_ALGORITHM: EcKeyAlgorithm = {
-    name: 'ECDH',
-    namedCurve: 'P-256',
-};
 
 const ENCRYPTION_ALGORITHM = {
     name: 'AES-GCM',
@@ -26,10 +21,11 @@ class AuthenticatedClient {
     private keyPair?: CryptoKeyPair;
 
     async connect(url: string, smePublicKey: string) {
-        this.keyPair = await subtle.generateKey(KEY_ALGORITHM, true, [
-            'deriveKey',
-            'deriveBits',
-        ]);
+        this.keyPair = await subtle.generateKey(
+            KEY_ALGORITHM,
+            true,
+            KEY_USAGES,
+        );
         const exportedPublicKey = await exportKey(this.keyPair.publicKey);
         this.socket = Client(url, {
             auth: {
@@ -119,13 +115,7 @@ describe('SME Server', () => {
                 exportKey(keys.publicKey).then((keyString) => {
                     smePublicKey = keyString;
                 });
-                return Promise.all([
-                    crypto.subtle.exportKey('jwk', keys.publicKey),
-                    crypto.subtle.exportKey('jwk', keys.privateKey),
-                ]);
-            })
-            .then(([publicKey, privateKey]) => {
-                return start(publicKey, privateKey);
+                return start(keys.publicKey, keys.privateKey);
             })
             .then((newServer) => {
                 server = newServer;
@@ -157,13 +147,5 @@ describe('SME Server', () => {
         await sleep(500);
         const socket = client.getSocket();
         expect(socket.connected).toBeTruthy();
-    });
-
-            // Listen for successful registration
-            socket.on('data', () => {
-                expect(socket.connected).toBeTruthy();
-                done();
-            });
-        });
     });
 });

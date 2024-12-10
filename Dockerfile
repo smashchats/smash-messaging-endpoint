@@ -40,4 +40,7 @@ HEALTHCHECK --interval=30s --timeout=3s \
 
 EXPOSE $PORT
 
+ENV SME_PUBLIC_KEY=${SME_PUBLIC_KEY}
+ENV SME_PRIVATE_KEY=${SME_PRIVATE_KEY}
+
 CMD ["npm", "start"]

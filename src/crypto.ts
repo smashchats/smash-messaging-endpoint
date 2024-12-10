@@ -7,8 +7,11 @@ export const EXPORTABLE = 'spki' as const;
 export const exportKey = async (
     key: CryptoKey,
     encoding: BufferEncoding = ENCODING,
+    format: KeyFormat = EXPORTABLE,
 ): Promise<string> =>
-    Buffer.from(await subtle.exportKey(EXPORTABLE, key)).toString(encoding);
+    Buffer.from(
+        await subtle.exportKey(format as 'spki' | 'pkcs8' | 'raw', key),
+    ).toString(encoding);
 
 export const importKey = async (
     keyEncoded: string,
@@ -16,9 +19,10 @@ export const importKey = async (
     exportable = true,
     usages: KeyUsage[] = [],
     encoding: BufferEncoding = ENCODING,
+    format: KeyFormat = EXPORTABLE,
 ): Promise<CryptoKey> =>
     await subtle.importKey(
-        EXPORTABLE,
+        format as 'spki' | 'pkcs8' | 'raw',
         Buffer.from(keyEncoded, encoding),
         keyAlgorithm,
         exportable,

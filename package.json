@@ -5,18 +5,19 @@
     "type": "module",
     "main": "dist/index.js",
     "scripts": {
-        "start": "node .",
-        "dev": "nodemon --watch 'src/**/*.ts' --exec 'node --loader ts-node/esm' src/index.ts",
+        "start": "node -r dotenv/config .",
+        "dev": "nodemon --watch 'src/**/*.ts' --exec 'node -r dotenv/config --loader ts-node/esm' src/index.ts",
         "build": "rm -rf dist/** && tsc",
-        "prepare": "husky",
+        "husky": "husky",
         "test": "jest",
         "test:watch": "npm run test -- --watchAll",
         "test:coverage": "npm run test -- --coverage",
         "typecheck": "tsc --noEmit",
         "eslint:check": "eslint src/**/*.ts",
         "eslint-dist:check": "eslint dist/**/*.js",
-        "prettier": "prettier --config .prettierrc 'src/**/*.ts'",
-        "prettier:tests": "prettier --config .prettierrc 'tests/**/*.ts' --write",
+        "generate-keys": "npm run --silent scripts/generate-keys > .env",
+        "scripts/generate-keys": "tsx scripts/generate-keys.ts",
+        "prettier": "prettier --config .prettierrc 'src/**/*.ts' 'scripts/**/*.ts' 'tests/**/*.ts'",
         "prettier:format": "npm run prettier -- --write",
         "prettier:check": "npm run prettier -- --check",
         "circular-dependencies:check": "madge --circular dist/",
@@ -26,8 +27,7 @@
         "lint-staged": "lint-staged"
     },
     "lint-staged": {
-        "src/**/*.ts": "npm run prettier:format",
-        "tests/**/*.ts": "npm run prettier:tests"
+        "*.ts": "npm run prettier:format"
     },
     "keywords": [],
     "author": "",
@@ -37,6 +37,7 @@
         "@types/express": "^4.17.21",
         "@types/jest": "^29.5.14",
         "@types/node": "^20.11.24",
+        "dotenv": "^16.4.7",
         "eslint": "^9.16.0",
         "husky": "^9.1.7",
         "jest": "^29.7.0",
@@ -47,6 +48,7 @@
         "socket.io-client": "^4.8.1",
         "ts-jest": "^29.2.5",
         "ts-node": "^10.9.2",
+        "tsx": "^4.19.2",
         "typescript": "^5.3.3",
         "typescript-eslint": "^8.18.0"
     },

@@ -26,8 +26,11 @@ import { Server, Socket } from 'socket.io';
 import { exportKey, importKey, last4 } from './crypto.js';
 import type { KeyPair, RegisteredUsers } from './types.js';
 
-const KEY_ALGORITHM: EcKeyAlgorithm = { name: 'ECDH', namedCurve: 'P-256' };
-const KEY_USAGE: KeyUsage[] = ['deriveBits', 'deriveKey'];
+export const KEY_ALGORITHM: EcKeyAlgorithm = {
+    name: 'ECDH',
+    namedCurve: 'P-256',
+};
+export const KEY_USAGES: KeyUsage[] = ['deriveBits', 'deriveKey'];
 
 async function importClientPublicKey(socket: Socket): Promise<CryptoKey> {
     return await importKey(socket.handshake.auth.key, KEY_ALGORITHM);
@@ -38,8 +41,8 @@ interface Closable {
 }
 
 export async function start(
-    exportedSmePublicKey: JsonWebKey,
-    exportedSmePrivateKey: JsonWebKey,
+    smePublicKey: CryptoKey,
+    smePrivateKey: CryptoKey,
 ): Promise<Closable> {
     const app = express();
     const server = createServer(app);
@@ -91,20 +94,8 @@ export async function start(
     };
 
     const SME_KEY_PAIR: KeyPair = {
-        publicKey: await subtle.importKey(
-            'jwk',
-            exportedSmePublicKey,
-            KEY_ALGORITHM,
-            true,
-            [],
-        ),
-        privateKey: await subtle.importKey(
-            'jwk',
-            exportedSmePrivateKey,
-            KEY_ALGORITHM,
-            false,
-            KEY_USAGE,
-        ),
+        publicKey: smePublicKey,
+        privateKey: smePrivateKey,
     };
 
     console.log('\n**** SME CONFIG ***');
