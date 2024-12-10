@@ -9,6 +9,8 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
+# ===============================================
+
 # Run stage
 FROM node:22.12-alpine3.20
 
