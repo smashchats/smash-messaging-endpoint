@@ -16,6 +16,7 @@
         "eslint:check": "eslint src/**/*.ts",
         "eslint-dist:check": "eslint dist/**/*.js",
         "prettier": "prettier --config .prettierrc 'src/**/*.ts'",
+        "prettier:tests": "prettier --config .prettierrc 'tests/**/*.ts' --write",
         "prettier:format": "npm run prettier -- --write",
         "prettier:check": "npm run prettier -- --check",
         "circular-dependencies:check": "madge --circular dist/",
@@ -25,7 +26,8 @@
         "lint-staged": "lint-staged"
     },
     "lint-staged": {
-        "*.ts": "npm run prettier:format"
+        "src/**/*.ts": "npm run prettier:format",
+        "tests/**/*.ts": "npm run prettier:tests"
     },
     "keywords": [],
     "author": "",
