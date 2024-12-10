@@ -12,6 +12,7 @@
         "test": "jest",
         "test:watch": "npm run test -- --watchAll",
         "typecheck": "tsc --noEmit",
+        "eslint:check": "eslint src/**/*.ts",
         "eslint-dist:check": "eslint dist/**/*.js",
         "prettier": "prettier --config .prettierrc 'src/**/*.ts'",
         "prettier:format": "npm run prettier -- --write",

@@ -1,10 +1,13 @@
 import { Buffer } from 'node:buffer';
 import { subtle } from 'node:crypto';
 
-export const ENCODING = "base64" as const;
-export const EXPORTABLE = "spki" as const;
+export const ENCODING = 'base64' as const;
+export const EXPORTABLE = 'spki' as const;
 
-export const exportKey = async (key: CryptoKey, encoding: BufferEncoding = ENCODING): Promise<string> =>
+export const exportKey = async (
+    key: CryptoKey,
+    encoding: BufferEncoding = ENCODING,
+): Promise<string> =>
     Buffer.from(await subtle.exportKey(EXPORTABLE, key)).toString(encoding);
 
 export const importKey = async (
@@ -12,14 +15,14 @@ export const importKey = async (
     keyAlgorithm: EcKeyAlgorithm,
     exportable = true,
     usages: KeyUsage[] = [],
-    encoding: BufferEncoding = ENCODING
+    encoding: BufferEncoding = ENCODING,
 ): Promise<CryptoKey> =>
     await subtle.importKey(
         EXPORTABLE,
         Buffer.from(keyEncoded, encoding),
         keyAlgorithm,
         exportable,
-        usages
+        usages,
     );
 
 export const last4 = (str: string): string =>
