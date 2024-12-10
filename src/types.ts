@@ -2,7 +2,7 @@ import { Socket } from 'socket.io';
 
 export interface RegisteredUser {
     socket?: Socket;
-    queue: [string, any][];
+    queue: [string, {length: number}][];
 }
 
 export interface RegisteredUsers {

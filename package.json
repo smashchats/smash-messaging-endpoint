@@ -18,6 +18,7 @@
         "prettier:format": "npm run prettier -- --write",
         "prettier:check": "npm run prettier -- --check",
         "build:checks": "npm run typecheck && npm run build",
+        "build:start": "npm run build:checks && npm run start",
         "lint-staged": "lint-staged"
     },
     "lint-staged": {

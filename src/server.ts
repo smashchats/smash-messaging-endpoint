@@ -7,7 +7,7 @@
 // - [-] reject messages peer not found
 // - [x] relay messages to the public key recipient (connected)
 // - [x] async (offline)
-// - [ ]
+// - [ ]
 // NON GOALS
 // - scaling (horizontal scale coordinating multiple nodes)
 // - authentication (ACL/usage)
@@ -52,7 +52,7 @@ export async function start(): Promise<Closable> {
 
     const REGISTERED_USERS: RegisteredUsers = {};
 
-    const sendDataTo = (keyId: string, sessionId: string, data: any): void => {
+    const sendDataTo = (keyId: string, sessionId: string, data: {length: number}): void => {
         REGISTERED_USERS[keyId]?.queue.push([sessionId, data]);
         flushDataQueue(keyId);
     };
