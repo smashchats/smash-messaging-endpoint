@@ -21,13 +21,16 @@ class AuthenticatedClient {
     keyPair?: CryptoKeyPair;
     exportedPublicKey?: string;
 
-    async connect(url: string, smePublicKey: string) {
+    async generateKeys() {
         this.keyPair = await subtle.generateKey(
             KEY_ALGORITHM,
             true,
             KEY_USAGES,
         );
         this.exportedPublicKey = await exportKey(this.keyPair.publicKey);
+    }
+
+    async connect(url: string, smePublicKey: string) {
         this.socket = Client(url, {
             auth: {
                 key: this.exportedPublicKey,
@@ -100,8 +103,6 @@ describe('SME Server', () => {
     const HOST = 'localhost';
     const URL = `ws://${HOST}:${PORT}`;
     let server: { close: () => void };
-    let client: AuthenticatedClient;
-
     let smePublicKey: string;
 
     beforeAll((done) => {
@@ -126,12 +127,6 @@ describe('SME Server', () => {
         await sleep(1000);
     });
 
-    afterEach(() => {
-        if (client) {
-            client.disconnect();
-        }
-    });
-
     it('should respond to health check', async () => {
         const response = await fetch(`http://${HOST}:${PORT}/health`);
         const data = await response.json();
@@ -143,34 +138,78 @@ describe('SME Server', () => {
         const clientSocket = Client(URL);
         clientSocket.on('connect', () => {
             expect(clientSocket.connected).toBeTruthy();
+            clientSocket.disconnect();
             done();
         });
     });
 
-    it('should handle authenticated connection and challenge', async () => {
-        client = new AuthenticatedClient();
-        await client.connect(URL, smePublicKey);
-        await sleep(500);
-        const socket = client.getSocket();
-        expect(socket.connected).toBeTruthy();
-    });
+    describe('for an authenticated client', () => {
+        let client: AuthenticatedClient;
 
-    it('should fail authentication with incorrect challenge solution', async () => {
-        client = new AuthenticatedClient();
-
-        // Override solveChallenge to return incorrect solution
-        jest.spyOn(
-            client as AuthenticatedClient,
-            'solveChallenge',
-        ).mockImplementation(async function (this: AuthenticatedClient) {
-            this.socket!.emit('register', 'incorrect_solution');
+        beforeAll(async () => {
+            client = new AuthenticatedClient();
+            await client.generateKeys();
+            await client.connect(URL, smePublicKey);
         });
 
-        await client.connect(URL, smePublicKey);
-        await sleep(500);
+        afterAll(() => {
+            client.disconnect();
+        });
 
-        const socket = client.getSocket();
-        expect(socket.connected).toBeFalsy();
+        it('should handle authenticated connection and challenge', async () => {
+            await sleep(500);
+            const socket = client.getSocket();
+            expect(socket.connected).toBeTruthy();
+        });
+
+        describe('reconnecting to the server', () => {
+            it('should handle re-authentication', async () => {
+                client.disconnect();
+                await sleep(500);
+                await client.connect(URL, smePublicKey);
+                await sleep(500);
+                const socket = client.getSocket();
+                expect(socket.connected).toBeTruthy();
+            });
+        });
+    });
+
+    describe('failure cases', () => {
+        let client: AuthenticatedClient;
+
+        beforeEach(async () => {
+            client = new AuthenticatedClient();
+            await client.generateKeys();
+        });
+
+        afterEach(() => {
+            client.disconnect();
+        });
+
+        it('should fail authentication with incorrect challenge solution', async () => {
+            // Override solveChallenge to return incorrect solution
+            jest.spyOn(
+                client as AuthenticatedClient,
+                'solveChallenge',
+            ).mockImplementation(async function (this: AuthenticatedClient) {
+                this.socket!.emit('register', 'incorrect_solution');
+            });
+
+            await client.connect(URL, smePublicKey);
+            await sleep(500);
+
+            const socket = client.getSocket();
+            expect(socket.connected).toBeFalsy();
+        });
+
+        it('should fail authentication with incorrect public key', async () => {
+            client.exportedPublicKey = 'incorrect_public_key';
+            await client.connect(URL, smePublicKey);
+            await sleep(500);
+
+            const socket = client.getSocket();
+            expect(socket.connected).toBeFalsy();
+        });
     });
 
     describe('message passing between clients', () => {
@@ -181,6 +220,9 @@ describe('SME Server', () => {
             // Set up two authenticated clients
             sender = new AuthenticatedClient();
             receiver = new AuthenticatedClient();
+
+            await sender.generateKeys();
+            await receiver.generateKeys();
 
             await sender.connect(URL, smePublicKey);
             await receiver.connect(URL, smePublicKey);
