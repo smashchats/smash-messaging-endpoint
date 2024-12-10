@@ -15,7 +15,7 @@
         "typecheck": "tsc --noEmit",
         "eslint:check": "eslint src/**/*.ts",
         "eslint-dist:check": "eslint dist/**/*.js",
-        "generate-keys": "npm run --silent scripts/generate-keys > .env",
+        "generate-keys": "npm run --silent scripts/generate-keys >> .env",
         "scripts/generate-keys": "tsx scripts/generate-keys.ts",
         "prettier": "prettier --config .prettierrc 'src/**/*.ts' 'scripts/**/*.ts' 'tests/**/*.ts'",
         "prettier:format": "npm run prettier -- --write",

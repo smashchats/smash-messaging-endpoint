@@ -47,8 +47,8 @@ export async function start(
     const app = express();
     const server = createServer(app);
     const io = new Server(server);
-    const port = process.env.PORT || 3210;
-    const host = process.env.HOST || 'host.docker.internal';
+    const port = process.env.PORT;
+    const host = process.env.HOST;
     const url = `ws://${host}:${port}/`;
 
     // Add health check endpoint
