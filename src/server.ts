@@ -52,7 +52,11 @@ export async function start(): Promise<Closable> {
 
     const REGISTERED_USERS: RegisteredUsers = {};
 
-    const sendDataTo = (keyId: string, sessionId: string, data: {length: number}): void => {
+    const sendDataTo = (
+        keyId: string,
+        sessionId: string,
+        data: { length: number },
+    ): void => {
         REGISTERED_USERS[keyId]?.queue.push([sessionId, data]);
         flushDataQueue(keyId);
     };
