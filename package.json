@@ -9,7 +9,7 @@
         "dev": "nodemon --watch 'src/**/*.ts' --exec 'node -r dotenv/config --loader ts-node/esm' src/index.ts",
         "build": "rm -rf dist/** && tsc",
         "prepare": "[ -n \"$CI\" ] || npm run prepare:husky",
-        "prepare:husky": "cd .. && husky nab/.husky && cd -",
+        "prepare:husky": "husky",
         "test": "jest",
         "test:watch": "npm run test -- --watchAll",
         "test:coverage": "npm run test -- --coverage",

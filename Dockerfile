@@ -3,6 +3,7 @@ FROM node:22.12-alpine3.20 AS builder
 
 WORKDIR /app
 
+ENV CI=true
 COPY package*.json ./
 RUN npm ci
 
@@ -28,6 +29,7 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 WORKDIR /app
 
+ENV CI=true
 COPY package*.json ./
 RUN npm ci --only=production
 RUN npm cache clean --force
@@ -45,4 +47,4 @@ EXPOSE $PORT
 ENV SME_PUBLIC_KEY=${SME_PUBLIC_KEY}
 ENV SME_PRIVATE_KEY=${SME_PRIVATE_KEY}
 
-CMD ["npm", "start"]
+CMD ["node", "dist/index.js"]
