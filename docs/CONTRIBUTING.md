@@ -128,7 +128,7 @@ A patch is a local-first, decentralized way to propose and review changes.
 ## **Issues**
 
 We manage issues through the `rad` CLI.
-A web interface for browsing issues will be introduced later.
+[Browse open issues](https://app.radicle.xyz/nodes/seed.radicle.garden/rad:z25KkhWqmihzgVX5oJEh39s7qjSWB/issues).
 
 ### Working with Issues:
 
