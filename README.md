@@ -125,5 +125,6 @@ This project is licensed under the GNU Affero General Public License v3.0 with a
 
 ## Related Projects
 
-- [Smash Protocol](https://github.com/unstaticlabs/smash-node-lib)
-- [Smash Simple Neighborhood](https://github.com/unstaticlabs/smash-simple-neighborhood)
+- [Smash Protocol](https://github.com/smashchats/smash-node-lib)
+- [Smash Simple Neighborhood](https://github.com/smashchats/smash-simple-neighborhood)
+- [Smash Simple NAB](https://github.com/smashchats/smash-simple-nab)
