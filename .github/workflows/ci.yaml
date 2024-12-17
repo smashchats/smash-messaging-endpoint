@@ -69,7 +69,7 @@ jobs:
             - run: npm install jest-junit
 
             - name: Run Tests
-              run: npm test -- --coverage --coverageReporters json-summary --reporters=default --reporters=jest-junit
+              run: npm test -- --coverage --coverageReporters lcov --coverageReporters json-summary --reporters=default --reporters=jest-junit
 
             - name: Process Coverage Report
               id: coverageComment
@@ -83,6 +83,14 @@ jobs:
                   badge-title: 'Coverage'
                   hide-comment: false
                   create-new-comment: false
+
+            - name: Analyze with SonarQube
+              if: github.ref_name == 'main'
+              uses: SonarSource/sonarqube-scan-action@v4.1.0
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+                  SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
     quality:
         needs: install # Run after install job
