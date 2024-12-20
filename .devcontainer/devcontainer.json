@@ -6,8 +6,7 @@
             "extensions": [
                 "dbaeumer.vscode-eslint",
                 "rvest.vs-code-prettier-eslint",
-                "esbenp.prettier-vscode",
-                "Orta.vscode-jest"
+                "esbenp.prettier-vscode"
             ]
         }
     },
