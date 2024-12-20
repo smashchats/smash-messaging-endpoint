@@ -2,7 +2,7 @@ import { subtle } from 'crypto';
 import { io as Client, Socket } from 'socket.io-client';
 
 import { exportKey, importKey } from '../src/crypto';
-import { KEY_ALGORITHM, KEY_USAGES, start } from '../src/server';
+import { Closable, KEY_ALGORITHM, KEY_USAGES, start } from '../src/server';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -30,19 +30,28 @@ class AuthenticatedClient {
         this.exportedPublicKey = await exportKey(this.keyPair.publicKey);
     }
 
-    async connect(url: string, smePublicKey: string) {
+    async connect(
+        url: string,
+        smePublicKey: string,
+        ack?: (() => void) | undefined,
+    ) {
         this.socket = Client(url, {
             auth: {
                 key: this.exportedPublicKey,
                 keyAlgorithm: KEY_ALGORITHM,
             },
+            transports: ['websocket'],
         });
         this.socket.on('challenge', async (data: ChallengeData) => {
-            await this.solveChallenge(smePublicKey, data);
+            await this.solveChallenge(smePublicKey, data, ack);
         });
     }
 
-    async solveChallenge(smePublicKeyString: string, data: ChallengeData) {
+    async solveChallenge(
+        smePublicKeyString: string,
+        data: ChallengeData,
+        ack: (() => void) | undefined,
+    ) {
         try {
             // Convert base64 strings to buffers
             const ivBuffer = Buffer.from(data.iv, 'base64');
@@ -82,7 +91,7 @@ class AuthenticatedClient {
             const solvedChallenge = Buffer.from(decrypted).toString('base64');
 
             // Send the solution
-            this.socket!.emit('register', solvedChallenge);
+            this.socket!.emit('register', solvedChallenge, ack);
         } catch (err) {
             console.error('Failed to solve challenge:', err);
             throw err;
@@ -94,7 +103,16 @@ class AuthenticatedClient {
     }
 
     public disconnect() {
-        this.socket?.disconnect();
+        if (!this.socket) return;
+        this.socket.removeAllListeners();
+        this.socket.disconnect();
+        this.socket.close();
+        if (this.socket.io?.engine) {
+            this.socket.io.engine.removeAllListeners();
+            this.socket.io.engine.close();
+            this.socket.io.engine.transport?.close();
+        }
+        this.socket = undefined;
     }
 }
 
@@ -102,7 +120,7 @@ describe('SME Server', () => {
     const PORT = 3211;
     const HOST = 'localhost';
     const URL = `ws://${HOST}:${PORT}`;
-    let server: { close: () => void };
+    let server: Closable;
     let smePublicKey: string;
 
     beforeAll((done) => {
@@ -123,9 +141,8 @@ describe('SME Server', () => {
     });
 
     afterAll(async () => {
-        server.close();
-        await sleep(1000);
-    });
+        await server.shutdown();
+    }, 15000);
 
     it('should respond to health check', async () => {
         const response = await fetch(`http://${HOST}:${PORT}/health`);
@@ -144,7 +161,7 @@ describe('SME Server', () => {
     });
 
     describe('for an authenticated client', () => {
-        let client: AuthenticatedClient;
+        let client: AuthenticatedClient | undefined;
 
         beforeAll(async () => {
             client = new AuthenticatedClient();
@@ -152,41 +169,48 @@ describe('SME Server', () => {
             await client.connect(URL, smePublicKey);
         });
 
-        afterAll(() => {
-            client.disconnect();
+        afterAll(async () => {
+            client?.disconnect();
+            await sleep(2000);
+            client = undefined;
         });
 
         it('should handle authenticated connection and challenge', async () => {
             await sleep(500);
-            const socket = client.getSocket();
-            expect(socket.connected).toBeTruthy();
+            const socket = client?.getSocket();
+            expect(socket?.connected).toBeTruthy();
         });
 
         describe('reconnecting to the server', () => {
             it('should handle re-authentication', async () => {
-                client.disconnect();
+                const socket = client?.getSocket();
+                client?.disconnect();
                 await sleep(500);
-                await client.connect(URL, smePublicKey);
+                expect(socket?.connected).toBeFalsy();
+                await client?.connect(URL, smePublicKey);
                 await sleep(500);
-                const socket = client.getSocket();
-                expect(socket.connected).toBeTruthy();
+                const socket2 = client?.getSocket();
+                expect(socket2?.connected).toBeTruthy();
             });
         });
     });
 
     describe('failure cases', () => {
-        let client: AuthenticatedClient;
+        let client: AuthenticatedClient | undefined;
 
         beforeEach(async () => {
             client = new AuthenticatedClient();
             await client.generateKeys();
         });
 
-        afterEach(() => {
-            client.disconnect();
+        afterEach(async () => {
+            client?.disconnect();
+            await sleep(1000);
+            client = undefined;
         });
 
         it('should fail authentication with incorrect challenge solution', async () => {
+            if (!client) throw new Error('Client not found');
             // Override solveChallenge to return incorrect solution
             jest.spyOn(
                 client as AuthenticatedClient,
@@ -203,6 +227,8 @@ describe('SME Server', () => {
         });
 
         it('should fail authentication with incorrect public key', async () => {
+            if (!client) throw new Error('Client not found');
+
             client.exportedPublicKey = 'incorrect_public_key';
             await client.connect(URL, smePublicKey);
             await sleep(500);
@@ -229,9 +255,10 @@ describe('SME Server', () => {
             await sleep(500); // Wait for authentication to complete
         });
 
-        afterEach(() => {
+        afterEach(async () => {
             sender.disconnect();
             receiver.disconnect();
+            await sleep(1000);
         });
 
         it('should successfully pass messages between authenticated clients', (done) => {
@@ -269,6 +296,109 @@ describe('SME Server', () => {
             sender
                 .getSocket()
                 .emit('data', nonExistentPeerId, testSessionId, testMessage);
+        });
+
+        describe('ACKnowledgements', () => {
+            describe('challenge', () => {
+                it('should ACK challenge on successful authentication', async () => {
+                    let timeoutRef: NodeJS.Timeout | undefined;
+                    const timeout = new Promise<void>((_, reject) => {
+                        timeoutRef = setTimeout(
+                            () => reject(new Error('Timeout waiting for ACK')),
+                            3000,
+                        );
+                    });
+                    await Promise.race([
+                        new Promise<void>((resolve, reject) => {
+                            sender
+                                .connect(URL, smePublicKey, () => {
+                                    clearTimeout(timeoutRef);
+                                    resolve();
+                                })
+                                .then()
+                                .catch(reject);
+                        }),
+                        timeout,
+                    ]);
+                });
+
+                it('should NOT ACK challenge with incorrect challenge solution', async () => {
+                    // Override solveChallenge to return incorrect solution
+                    jest.spyOn(
+                        sender as AuthenticatedClient,
+                        'solveChallenge',
+                    ).mockImplementation(async function (
+                        this: AuthenticatedClient,
+                    ) {
+                        this.socket!.emit('register', 'incorrect_solution');
+                    });
+                    await Promise.race([
+                        new Promise<void>((resolve, reject) => {
+                            sender
+                                .connect(URL, smePublicKey, reject)
+                                .then()
+                                .catch(resolve);
+                        }),
+                        new Promise<void>((resolve) =>
+                            setTimeout(resolve, 3000),
+                        ),
+                    ]);
+                });
+            });
+
+            describe('data', () => {
+                it('should ACK data sent to an existing peer', async () => {
+                    const testMessage = { length: 42 };
+                    const testSessionId = 'test-session';
+                    const receiverPublicKey = receiver.exportedPublicKey;
+                    let timeoutRef: NodeJS.Timeout | undefined;
+                    const timeout = new Promise<void>((_, reject) => {
+                        timeoutRef = setTimeout(
+                            () => reject(new Error('Timeout waiting for ACK')),
+                            3000,
+                        );
+                    });
+                    await Promise.race([
+                        new Promise<void>((resolve) => {
+                            sender
+                                .getSocket()
+                                .emit(
+                                    'data',
+                                    receiverPublicKey,
+                                    testSessionId,
+                                    testMessage,
+                                    () => {
+                                        clearTimeout(timeoutRef);
+                                        resolve();
+                                    },
+                                );
+                        }),
+                        timeout,
+                    ]);
+                });
+
+                it('should not ACK data sent to a non-existent peer', async () => {
+                    const testMessage = { length: 42 };
+                    const testSessionId = 'test-session';
+                    const nonExistentPeerId = 'non-existent-peer-id';
+                    await Promise.race([
+                        new Promise<void>((_, reject) => {
+                            sender
+                                .getSocket()
+                                .emit(
+                                    'data',
+                                    nonExistentPeerId,
+                                    testSessionId,
+                                    testMessage,
+                                    reject,
+                                );
+                        }),
+                        new Promise<void>((resolve) =>
+                            setTimeout(resolve, 3000),
+                        ),
+                    ]);
+                });
+            });
         });
     });
 });

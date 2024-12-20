@@ -4,10 +4,9 @@
 // - [x] register anonymous users with any public key
 // - [x] authenticate registers with private key challenge
 // - [x] accept messages from any peer towards registered public key
-// - [-] reject messages peer not found
+// - [x] reject messages peer not found
 // - [x] relay messages to the public key recipient (connected)
 // - [x] async (offline)
-// - [ ]
 // NON GOALS
 // - scaling (horizontal scale coordinating multiple nodes)
 // - authentication (ACL/usage)
@@ -36,8 +35,8 @@ async function importClientPublicKey(socket: Socket): Promise<CryptoKey> {
     return await importKey(socket.handshake.auth.key, KEY_ALGORITHM);
 }
 
-interface Closable {
-    close(fn?: (err?: Error) => void): unknown;
+export interface Closable {
+    shutdown(): Promise<void>;
 }
 
 export async function start(
@@ -135,11 +134,9 @@ export async function start(
             ? await importClientPublicKey(socket)
             : undefined;
         // Generate a Base64 encoding of the Client public key
-        const clientKeyId = auth
-            ? await exportKey(clientPublicKey!)
-            : 'ANONYMOUS';
+        const clientKeyId = auth ? await exportKey(clientPublicKey!) : 'ANON';
 
-        socket.on('data', (peerId, sessionId, data) => {
+        socket.on('data', (peerId, sessionId, data, ack) => {
             if (!Object.hasOwn(REGISTERED_USERS, peerId)) {
                 console.error(`unknown peer id ${last4(peerId)}`);
                 socket.emit('error', {
@@ -151,6 +148,9 @@ export async function start(
                     `>>> Incoming data for ${last4(peerId)} (length: ${data.length}, session: ${sessionId})`,
                 );
                 sendDataTo(peerId, sessionId, data);
+                if (typeof ack === 'function') {
+                    ack();
+                }
             }
         });
 
@@ -192,16 +192,20 @@ export async function start(
 
             const encryptedChallengeBuf = Buffer.from(encryptedChallenge);
 
-            socket.on('register', async (solvedChallengeAsString) => {
+            socket.on('register', async (solvedChallengeAsString, ack) => {
                 if (
                     solvedChallengeAsString ===
                     challengeBuf.toString(SME_CONFIG.challengeEncoding)
                 ) {
+                    console.info('challenge solved', clientKeyId);
                     // Register a mailbox if not already registered
                     registerMailBox(clientKeyId, socket);
+                    if (typeof ack === 'function') {
+                        ack();
+                    }
                 } else {
                     // TODO: better cleaner scalable logs
-                    console.warn('!!! FAILED CHALLENGE !!!');
+                    console.warn('!!! FAILED CHALLENGE !!!', clientKeyId);
                     socket.disconnect(true);
                 }
                 console.log(
@@ -245,5 +249,20 @@ export async function start(
         console.log(`server running at http://localhost:${port}`);
     });
 
-    return server;
+    const shutdown = () =>
+        new Promise((resolve) => {
+            // Disconnect all socket.io clients
+            io.sockets.sockets.forEach((socket) => {
+                socket.disconnect(true);
+            });
+            // Close the socket.io server
+            io.close();
+            server.closeAllConnections();
+            server.close(resolve);
+        });
+
+    return {
+        ...server,
+        shutdown,
+    } as Closable;
 }

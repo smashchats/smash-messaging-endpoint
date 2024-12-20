@@ -1,7 +1,7 @@
 import { importKey } from './crypto.js';
-import { KEY_ALGORITHM, KEY_USAGES, start } from './server.js';
+import { Closable, KEY_ALGORITHM, KEY_USAGES, start } from './server.js';
 
-let server: { close: () => void };
+let server: Closable;
 
 async function startServer() {
     const publicKeyString = process.env.SME_PUBLIC_KEY;
@@ -35,7 +35,7 @@ async function shutdown(signal: string) {
 
     if (server) {
         try {
-            await server.close();
+            await server.shutdown();
             console.log('Server closed successfully');
         } catch (err) {
             console.error('Error while closing server:', err);
