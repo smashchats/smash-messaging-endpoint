@@ -51,7 +51,7 @@
         "ts-node": "^10.9.2",
         "tsx": "^4.19.2",
         "typescript": "^5.7.2",
-        "typescript-eslint": "^8.25.0"
+        "typescript-eslint": "^8.32.0"
     },
     "dependencies": {
         "@peculiar/webcrypto": "^1.4.6",
