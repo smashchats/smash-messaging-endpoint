@@ -6,8 +6,16 @@ let server: Closable;
 async function startServer() {
     const publicKeyString = process.env.SME_PUBLIC_KEY;
     const privateKeyString = process.env.SME_PRIVATE_KEY;
+
+    const host = process.env.HOST;
+    const port = process.env.PORT;
+
+    if (!host || !port) {
+        throw new Error('HOST and PORT must be set.');
+    }
+
     if (!publicKeyString || !privateKeyString) {
-        throw new Error('SME_PUBLIC_KEY and SME_PRIVATE_KEY must be set');
+        throw new Error('SME_PUBLIC_KEY and SME_PRIVATE_KEY must be set.');
     }
     const [publicKey, privateKey] = await Promise.all([
         importKey(
