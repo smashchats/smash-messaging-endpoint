@@ -1,0 +1,5 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Renovate disabled 2026-08-26. No human commit in 473 days, and it is declared in no Komodo stack on either plane. Re-enable by setting enabled to true.",
+  "enabled": false
+}
